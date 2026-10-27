@@ -21,6 +21,10 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 .ready .lens { transition: transform 460ms cubic-bezier(.3,1.25,.45,1); }
 .lens, .ic { will-change: transform; }
 .glowc, .wordc { will-change: opacity, transform; }
+/* LEISTUNG (gemessen): Ohne eigene Ebenen musste der TV bei jedem Wechsel den großen Kartenschatten
+   und die leuchtenden Horizontlinien neu zeichnen (~250 ms). Mit eigenen Ebenen ~25 ms. */
+.horizon { will-change: opacity; }
+.content, .big-icon, .open-btn, .ic, .lens, .floor-light { will-change: transform; }
 .big-icon .big-img { display: none !important; }
 .big-icon.has-img .big-img.cur { display: block !important; }
 
@@ -132,5 +136,5 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 .ic.shaped.has-img, .big-icon.shaped.has-img { background: none !important; box-shadow: none !important; overflow: visible; }
 .ic.shaped.has-img .on-layer, .ic.shaped.has-img .hl, .ic.shaped.has-img .bev,
 .big-icon.shaped.has-img .hl, .big-icon.shaped.has-img .bev { display: none; }
-.shaped.has-img .app-img { object-fit: contain; filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45)); }
+.shaped.has-img .app-img { object-fit: contain; }
 .ic.shaped.has-img .app-img { left: 6px; top: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }

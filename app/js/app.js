@@ -57,6 +57,9 @@
       + ' box-shadow: 0 0 12px rgba(' + a.tint + ',0.35), 0 0 40px rgba(' + a.tint + ',0.15);';
   }
 
+  // Frei geformte Logos: Schatten nach unten + leichtes Leuchten in der App-Farbe
+  function shapeGlow(a) { return 'drop-shadow(0 8px 14px rgba(0,0,0,0.5)) drop-shadow(0 0 18px rgba(' + a.tint + ',0.45))'; }
+
   // ---------- Szene aufbauen ----------
   // Dieselbe Hintergrund-Szene gibt es dreimal: sichtbar, unscharf hinter dem Glas, als Lichtkante.
   // LEISTUNG: Alles Große (Farbflächen, Schriftzug, unscharfe Ansicht) wird beim Start EINMAL als Bild
@@ -173,7 +176,7 @@
 
   var content = el('div', 'fill content', card);
   var bigIcon = el('div', 'big-icon', content);
-  var bigImgs = APPS.map(function () { return el('img', 'app-img big-img', bigIcon); }), bigOk = {};
+  var bigImgs = APPS.map(function (a) { var im = el('img', 'app-img big-img', bigIcon); if (a.shape) im.style.filter = shapeGlow(a); return im; }), bigOk = {};
   el('span', 'fill hl', bigIcon);
   el('span', 'fill bev', bigIcon);
   var bigGlyph = el('span', 'glyph', bigIcon, 'position:relative; display:flex');
@@ -191,6 +194,7 @@
     t.style.background = 'linear-gradient(150deg, rgba(' + a.tint + ',0.30) 0%, rgba(' + a.tint2 + ',0.10) 100%), rgba(255,255,255,0.05)';
     el('span', 'fill on-layer', t, 'background: linear-gradient(150deg, rgba(' + a.tint + ',0.92) 0%, rgba(' + a.tint2 + ',0.5) 100%), rgba(255,255,255,0.04)');
     var img = el('img', 'app-img', t);
+    if (a.shape) img.style.filter = shapeGlow(a);
     el('span', 'fill hl', t);
     el('span', 'fill bev', t);
     var g = el('span', 'glyph', t);
@@ -281,15 +285,15 @@
     requestAnimationFrame(tick);
   }
 
-  var lastMove = 0, keyTime = 0;
+  var lastMove = 0, keyTime = 0, saveTimer = null;
   function move(d) {
     var now = Date.now();
-    if (now - lastMove < 130) return;
+    if (now - lastMove < 110) return;
     var n = Math.max(0, Math.min(APPS.length - 1, state.focus + d));
     if (n === state.focus) return;
     lastMove = now;
     state.focus = n;
-    store('gh.focus', String(n));
+    clearTimeout(saveTimer); saveTimer = setTimeout(function () { store('gh.focus', String(state.focus)); }, 1500); // Speichern erst, wenn Ruhe ist
     render(n, true);
   }
 
@@ -412,7 +416,7 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.6 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.7 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')

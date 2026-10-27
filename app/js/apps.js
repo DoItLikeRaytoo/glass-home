@@ -46,7 +46,7 @@ var GH_APPS = [
     ids: [], match: [/^rtl\s*(\+|plus)/i, /rtl/i], avoid: [] },
 
   { key: 'prime', name: 'Prime Video', word: 'PRIME', kind: 'Streaming', sub: 'Filme und Serien',
-    tint: '0,168,225', tint2: '45,212,191', glyph: 'clapper', icon: 'icons/prime.png',
+    tint: '0,168,225', tint2: '45,212,191', glyph: 'clapper', icon: 'icons/prime.png', shape: true,
     ids: ['org.tizen.primevideo'], match: [/prime\s*video/i, /amazon/i], avoid: [] },
 
   { key: 'netflix', name: 'Netflix', word: 'NETFLIX', kind: 'Streaming', sub: 'Filme und Serien',
@@ -54,7 +54,7 @@ var GH_APPS = [
     ids: ['org.tizen.netflix-app'], match: [/^netflix$/i, /netflix/i], avoid: [] },
 
   { key: 'tvplus', name: 'Samsung TV Plus', word: 'TV PLUS', kind: 'Free-TV', sub: 'Kostenlose Sender',
-    tint: '59,130,246', tint2: '34,211,238', glyph: 'tvplus', icon: 'icons/tvplus.png',
+    tint: '59,130,246', tint2: '34,211,238', glyph: 'tvplus', icon: 'icons/tvplus.png', shape: true,
     ids: [], match: [/tv\s*plus/i], avoid: [] },
 
   { key: 'youtube', name: 'YouTube', word: 'YOUTUBE', kind: 'Original-App', sub: 'Mit Werbung',
