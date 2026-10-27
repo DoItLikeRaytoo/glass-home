@@ -58,35 +58,62 @@
   }
 
   // ---------- Szene aufbauen ----------
-  // Dieselbe Hintergrund-Szene wird dreimal verwendet: sichtbar, unscharf hinter dem Glas, als Lichtkante.
-  // Alle drei bekommen exakt dieselben Positionen und Übergänge, damit nichts versetzt oder doppelt wirkt.
+  // Dieselbe Hintergrund-Szene gibt es dreimal: sichtbar, unscharf hinter dem Glas, als Lichtkante.
+  // LEISTUNG: Alles Große (Farbflächen, Schriftzug, unscharfe Ansicht) wird beim Start EINMAL als Bild
+  // (Canvas) berechnet. Beim App-Wechsel blendet der Fernseher nur noch fertige Bilder über
+  // Deckkraft/Position um – ohne neu zu zeichnen. Genau dieses Neuzeichnen hat vorher ~0,5 s gebremst.
   var layers = [];
-  // Leistung: Jede App hat pro Szene eigene Ebenen. Nur die gerade aktive und die gerade ausblendende
-  // App sind sichtbar (display), alle anderen ruhen komplett (kein Speicher, keine Rechenzeit).
-  // In der Glas-Ansicht ist das Wort ein EINMAL vorberechnetes, unscharfes Bild (Canvas) – der Fernseher
-  // muss die Unschärfe also nicht bei jedem Bild der Animation neu berechnen.
-  var layers = [];
+  var DPR = Math.min(2, window.devicePixelRatio || 1);
   function buildScene(parent, mode) {
     var L = { glows: [], words: [], horizons: [], mode: mode };
-    if (mode !== 'rim') APPS.forEach(function (a) { L.glows.push(el('div', 'fill glow fade idle', parent, 'background:' + glowOf(a) + '; opacity:0')); });
-    var w = el('div', 'abs words', parent);
-    APPS.forEach(function (a) {
-      var d;
-      if (mode === 'main') {
-        d = el('div', 'word fade idle', w, 'font-size:' + fsOf(a) + 'px; background-image:' + wordGrad(a) + '; opacity:0; transform: translate(-50%,-50%) translateX(40px)');
-        d.textContent = a.word;
-      } else {
-        d = el('canvas', 'blurword fade idle', parent, 'opacity:0; transform: translateX(40px)');
-      }
-      L.words.push(d);
-    });
-    if (mode === 'main') APPS.forEach(function (a) { L.horizons.push(el('div', 'abs horizon fade idle', parent, horizonCss(a) + ' opacity:0')); });
+    if (mode !== 'rim') APPS.forEach(function () { L.glows.push(el('canvas', 'abs glowc fade', parent, 'opacity:0')); });
+    APPS.forEach(function () { L.words.push(el('canvas', 'abs wordc fade', parent, 'opacity:0; transform: translateX(40px)')); });
+    if (mode === 'main') APPS.forEach(function (a) { L.horizons.push(el('div', 'abs horizon fade', parent, horizonCss(a) + ' opacity:0')); });
     layers.push(L);
     return L;
   }
 
-  // Unscharfes Wort vorberechnen (halbe Auflösung reicht, weil es ohnehin unscharf ist)
+  // Farbflächen (entspricht glowOf): weiche Verläufe -> viertel Auflösung reicht völlig
+  function ellipseGlow(c, cx, cy, rx, ry, stops) {
+    c.save(); c.translate(cx, cy); c.scale(1, ry / rx);
+    var g = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+    stops.forEach(function (s) { g.addColorStop(s[0], s[1]); });
+    c.fillStyle = g; c.fillRect(-cx - 4, (-cy - 4) * rx / ry, 1928, 1090 * rx / ry);
+    c.restore();
+  }
+  function paintGlow(cv, a) {
+    var k = 0.25; cv.width = 1920 * k; cv.height = 1080 * k;
+    cv.style.left = '0px'; cv.style.top = '0px'; cv.style.width = '1920px'; cv.style.height = '1080px';
+    var c = cv.getContext('2d'); c.scale(k, k);
+    var t = a.tint, t2 = a.tint2, Z = 'rgba(0,0,0,0)';
+    // Reihenfolge wie CSS (letzte Ebene zuerst malen)
+    ellipseGlow(c, 960, 0.54 * 1080, 1100, 320, [[0, 'rgba(' + t + ',0.10)'], [0.7, Z], [1, Z]]);
+    ellipseGlow(c, 960, 0.96 * 1080, 1000, 300, [[0, 'rgba(' + t2 + ',0.09)'], [0.7, Z], [1, Z]]);
+    ellipseGlow(c, 960, 0.773 * 1080, 490, 45, [[0, 'rgba(' + t + ',0.08)'], [1, Z]]);
+    ellipseGlow(c, 960, 0.27 * 1080, 1300, 460, [[0, 'rgba(' + t + ',0.16)'], [0.45, 'rgba(' + t + ',0.04)'], [0.72, Z], [1, Z]]);
+  }
+
+  // Schriftzug: scharf (main) oder unscharf vorberechnet (frost/rim, halbe Auflösung)
   var WORD_CY = 310; // Mitte des Schriftzugs auf dem Bildschirm (30 px + 560/2)
+  function drawWord(t, a, boxTop, fs) {
+    t.font = '900 ' + fs + 'px "GH Inter"';
+    try { t.letterSpacing = (-0.06 * fs) + 'px'; } catch (e) {}
+    var m = t.measureText(a.word);
+    var asc = m.fontBoundingBoxAscent || fs * 0.97, desc = m.fontBoundingBoxDescent || fs * 0.24;
+    var base = boxTop + (fs - (asc + desc)) / 2 + asc;
+    var g = t.createLinearGradient(0, boxTop, 0, boxTop + fs);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(' + a.tint + ',1)'); g.addColorStop(1, 'rgba(' + a.tint2 + ',0.65)');
+    t.fillStyle = g; t.textBaseline = 'alphabetic';
+    t.fillText(a.word, 960 - m.width / 2, base);
+    try { t.letterSpacing = '0px'; } catch (e) {}
+  }
+  function paintSharpWord(cv, a) {
+    var fs = fsOf(a), pad = 24, top = WORD_CY - fs / 2 - pad, h = fs + 2 * pad, k = DPR;
+    cv.width = 1920 * k; cv.height = Math.ceil(h * k);
+    cv.style.left = '0px'; cv.style.top = top + 'px'; cv.style.width = '1920px'; cv.style.height = h + 'px';
+    var t = cv.getContext('2d'); t.scale(k, k);
+    drawWord(t, a, pad, fs);
+  }
   function paintBlurWord(cv, a, mode) {
     var fs = fsOf(a), pad = 90, top = WORD_CY - fs / 2 - pad, h = 800 - top, k = 0.5; // bis unter den Horizont (y 720)
     cv.width = 1920 * k; cv.height = Math.ceil(h * k);
@@ -94,20 +121,11 @@
     var tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height;
     var t = tmp.getContext('2d');
     t.scale(k, k);
-    t.font = '900 ' + fs + 'px "GH Inter"';
-    try { t.letterSpacing = (-0.06 * fs) + 'px'; } catch (e) {}
-    var m = t.measureText(a.word);
-    var asc = m.fontBoundingBoxAscent || fs * 0.97, desc = m.fontBoundingBoxDescent || fs * 0.24;
-    var boxTop = pad, base = boxTop + (fs - (asc + desc)) / 2 + asc;
-    var g = t.createLinearGradient(0, boxTop, 0, boxTop + fs);
-    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(' + a.tint + ',1)'); g.addColorStop(1, 'rgba(' + a.tint2 + ',0.65)');
-    t.fillStyle = g; t.textBaseline = 'alphabetic';
-    t.fillText(a.word, 960 - m.width / 2, base);
+    drawWord(t, a, pad, fs);
     // Horizontlinie (wie .horizon: 2 px, Farbverlauf, Leuchten) – wird mit unscharf gerechnet
     var hy = 720 - top, hg = t.createLinearGradient(0, 0, 1920, 0);
     hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(0.18, 'rgba(' + a.tint + ',0.5)'); hg.addColorStop(0.5, 'rgba(255,255,255,0.8)');
     hg.addColorStop(0.82, 'rgba(' + a.tint + ',0.5)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
-    t.letterSpacing = '0px';
     t.shadowColor = 'rgba(' + a.tint + ',0.35)'; t.shadowBlur = 12; t.fillStyle = hg; t.fillRect(0, hy, 1920, 2);
     t.shadowColor = 'rgba(' + a.tint + ',0.15)'; t.shadowBlur = 40; t.fillRect(0, hy, 1920, 2);
     t.shadowBlur = 0;
@@ -115,16 +133,22 @@
     c.clearRect(0, 0, cv.width, cv.height);
     c.filter = mode === 'rim' ? 'blur(10px) brightness(1.7) saturate(1.2)' : 'blur(7.5px) saturate(1.12)';
     c.drawImage(tmp, 0, 0);
-    cv.setAttribute('data-ready', '1');
   }
-  function paintAllBlurWords() {
-    var order = [state.focus].concat(APPS.map(function (_, i) { return i; }).filter(function (i) { return i !== state.focus; }));
-    var n = 0;
+  function paintApp(i) {
+    var a = APPS[i];
+    layers.forEach(function (L) {
+      if (L.glows[i]) paintGlow(L.glows[i], a);
+      if (L.mode === 'main') paintSharpWord(L.words[i], a); else paintBlurWord(L.words[i], a, L.mode);
+    });
+  }
+  function paintAll(done) {
+    // aktuelle App sofort, die übrigen in kleinen Häppchen (Bedienung bleibt frei)
+    paintApp(state.focus);
+    var rest = APPS.map(function (_, i) { return i; }).filter(function (i) { return i !== state.focus; }), n = 0;
     (function next() {
-      if (n >= order.length) return;
-      var i = order[n++];
-      layers.forEach(function (L) { if (L.mode !== 'main') paintBlurWord(L.words[i], APPS[i], L.mode); });
-      setTimeout(next, 30); // in kleinen Häppchen, damit die Bedienung nicht blockiert
+      if (n >= rest.length) { if (done) done(); return; }
+      paintApp(rest[n++]);
+      setTimeout(next, 16);
     })();
   }
 
@@ -149,7 +173,7 @@
 
   var content = el('div', 'fill content', card);
   var bigIcon = el('div', 'big-icon', content);
-  var bigImg = el('img', 'app-img', bigIcon);
+  var bigImgs = APPS.map(function () { return el('img', 'app-img big-img', bigIcon); }), bigOk = {};
   el('span', 'fill hl', bigIcon);
   el('span', 'fill bev', bigIcon);
   var bigGlyph = el('span', 'glyph', bigIcon, 'position:relative; display:flex');
@@ -179,44 +203,21 @@
   var diagBody = el('div', 'diag-body', diag);
   var diagScroll = 0;
 
-  // Szene umschalten: neue App einblenden, alte ausblenden, danach alte ruhen lassen
-  var sceneCurrent = -1, hideTimers = {};
-  function sceneEls(j) {
-    var out = [];
-    layers.forEach(function (L) { if (L.glows[j]) out.push(L.glows[j]); out.push(L.words[j]); if (L.horizons[j]) out.push(L.horizons[j]); });
-    return out;
-  }
+  // Szene umschalten: neue App einblenden, alte ausblenden (nur Deckkraft/Position)
+  var sceneCurrent = -1;
   function setOn(j, on) {
     layers.forEach(function (L) {
       if (L.glows[j]) L.glows[j].style.opacity = on ? '1' : '0';
       L.words[j].style.opacity = on ? '1' : '0';
-      L.words[j].style.transform = (L.mode === 'main' ? 'translate(-50%,-50%) ' : '') + 'translateX(' + (on ? 0 : 40) + 'px)';
+      L.words[j].style.transform = 'translateX(' + (on ? 0 : 40) + 'px)';
       if (L.horizons[j]) L.horizons[j].style.opacity = on ? '1' : '0';
-    });
-  }
-  // Vorwärmen: die Nachbar-Apps links/rechts sind schon fertig gezeichnet (unsichtbar),
-  // damit der nächste Wechsel sofort startet statt erst zeichnen zu müssen.
-  function warmSet(i) {
-    var w = {}; w[i] = 1; if (i > 0) w[i - 1] = 1; if (i < APPS.length - 1) w[i + 1] = 1; return w;
-  }
-  function applyWarm(i, keep) {
-    var w = warmSet(i);
-    if (keep >= 0) w[keep] = 1;
-    APPS.forEach(function (_, j) {
-      var on = !!w[j];
-      sceneEls(j).forEach(function (e) { e.classList.toggle('idle', !on); e.classList.toggle('warm', on); });
     });
   }
   function setScene(i) {
     if (i === sceneCurrent) return;
-    var prev = sceneCurrent;
-    clearTimeout(hideTimers.t);
-    applyWarm(i, prev);
-    void stage.offsetWidth;            // Startzustand übernehmen, damit die Überblendung sicher läuft
+    if (sceneCurrent >= 0) setOn(sceneCurrent, false);
     setOn(i, true);
-    if (prev >= 0) setOn(prev, false);
     sceneCurrent = i;
-    hideTimers.t = setTimeout(function () { applyWarm(sceneCurrent, -1); }, 1200);
   }
 
   // ---------- Fokus ----------
@@ -228,7 +229,8 @@
     bigIcon.style.background = 'linear-gradient(150deg, rgba(' + a.tint + ',0.85) 0%, rgba(' + a.tint2 + ',0.45) 100%)';
     bigIcon.style.boxShadow = '0 2px 4px rgba(0,0,0,0.25), 0 26px 50px rgba(0,0,0,0.4), 0 0 50px rgba(' + a.tint + ',0.22)';
     bigGlyph.innerHTML = glyphSvg(a.glyph, 108, 1.3);
-    setIcon(bigIcon, bigImg, i);
+    bigImgs.forEach(function (im, j) { im.classList.toggle('cur', j === i); });
+    bigIcon.classList.toggle('has-img', !!bigOk[i]);
     kindEl.style.color = 'rgb(' + a.tint + ')';
     kindEl.textContent = a.kind;
     nameEl.textContent = a.name;
@@ -262,9 +264,10 @@
   // Bildrate während eines App-Wechsels messen (wird in der Diagnose angezeigt)
   function measureFrames() {
     if (measuring) return;
-    var start = performance.now(), last = start, frames = 0, longest = 0;
+    var start = performance.now(), last = start, frames = 0, longest = 0, first = true;
     measuring = true;
     function tick(t) {
+      if (first) { first = false; state.inputLag = Math.round(t - keyTime); }
       frames++;
       longest = Math.max(longest, t - last);
       last = t;
@@ -277,7 +280,7 @@
     requestAnimationFrame(tick);
   }
 
-  var lastMove = 0;
+  var lastMove = 0, keyTime = 0;
   function move(d) {
     var now = Date.now();
     if (now - lastMove < 130) return;
@@ -292,21 +295,21 @@
   // ---------- App-Symbole vom Fernseher ----------
   // Reihenfolge: 1) eigenes Logo aus icons/ (falls in apps.js eingetragen), 2) Symbol vom Fernseher,
   // 3) gleicher Pfad ohne file://. Erst wenn alles scheitert, erscheint das Ersatzsymbol.
-  function setIcon(box, img, i) {
+  function setIcon(img, i, done) {
     var a = APPS[i], r = state.resolved[i], list = [];
     if (a.icon) list.push(a.icon);
     if (r && r.app.iconPath) { list.push(P.iconUrl(r.app.iconPath)); if (P.iconUrl(r.app.iconPath) !== r.app.iconPath) list.push(r.app.iconPath); }
     var key = list.join('|');
     if (img.getAttribute('data-src') === key) return;
     img.setAttribute('data-src', key);
-    box.classList.remove('has-img');
+    done(false);
     if (!list.length) { img.removeAttribute('src'); return; }
     var n = 0;
-    img.onload = function () { box.classList.add('has-img'); state.iconStatus[a.key] = (n === 0 && a.icon ? 'eigenes Logo ' : 'ok ') + img.naturalWidth + '×' + img.naturalHeight; };
+    img.onload = function () { done(true); state.iconStatus[a.key] = (n === 0 && a.icon ? 'eigenes Logo ' : 'ok ') + img.naturalWidth + '×' + img.naturalHeight; };
     img.onerror = function () {
       n++;
       if (n < list.length) { img.src = list[n]; return; }
-      box.classList.remove('has-img'); state.iconStatus[a.key] = 'nicht ladbar';
+      done(false); state.iconStatus[a.key] = 'nicht ladbar';
     };
     img.src = list[0];
   }
@@ -335,7 +338,10 @@
       state.listError = err;
       state.installed = list || [];
       state.resolved = resolve(state.installed);
-      tiles.forEach(function (t, i) { setIcon(t.el, t.img, i); });
+      tiles.forEach(function (t, i) {
+        setIcon(t.img, i, function (ok) { t.el.classList.toggle('has-img', ok); });
+        setIcon(bigImgs[i], i, function (ok) { bigOk[i] = ok; if (i === state.focus) bigIcon.classList.toggle('has-img', ok); });
+      });
       render(state.focus, false);
       if (state.diag) drawDiag();
     });
@@ -405,14 +411,14 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.4 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.5 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')
       + '<tr><td class="dim">Zeitquelle</td><td>' + esc(timeSrc) + '</td></tr>'
       + '<tr><td class="dim">Farbtasten</td><td>' + (state.keys.length ? esc(state.keys.join(', ')) : '<span class="dim">nicht registriert</span>') + '</td></tr>'
       + '<tr><td class="dim">Glas-Qualität</td><td>' + (state.lite ? 'leicht' : 'voll') + ' <span class="dim">(gelbe Taste)</span></td></tr>'
-      + '<tr><td class="dim">Letzter App-Wechsel</td><td>' + (state.fps == null ? '<span class="dim">noch nicht gemessen</span>' : state.fps + ' fps, längster Frame ' + state.longest + ' ms') + '</td></tr>'
+      + '<tr><td class="dim">Letzter App-Wechsel</td><td>' + (state.fps == null ? '<span class="dim">noch nicht gemessen</span>' : state.fps + ' fps, längster Frame ' + state.longest + ' ms, Reaktion ' + (state.inputLag == null ? '?' : state.inputLag) + ' ms') + '</td></tr>'
       + '<tr><td class="dim">Letzte Taste</td><td class="mono">' + esc(state.lastKey || '—') + '</td></tr>'
       + '<tr><td class="dim">Rückkehr</td><td>' + esc(state.returnInfo || '—') + '</td></tr>'
       + '<tr><td class="dim">Letzter Start</td><td class="mono">' + esc(state.lastLaunch) + '</td></tr>'
@@ -455,6 +461,7 @@
   }
   function onKey(e) {
     var k = e.keyCode;
+    keyTime = performance.now();
     state.lastKey = k + ' / ' + (e.key || e.keyIdentifier || '?') + (e.code ? ' / ' + e.code : '');
     if (isBack(e)) {
       e.preventDefault(); e.stopPropagation();
@@ -512,7 +519,7 @@
   tickClock();
   render(state.focus, false);
   scanApps();
-  (document.fonts && document.fonts.load ? document.fonts.load('900 300px "GH Inter"').then(paintAllBlurWords, paintAllBlurWords) : paintAllBlurWords());
+  (document.fonts && document.fonts.load ? document.fonts.load('900 300px "GH Inter"').then(function () { paintAll(); }, function () { paintAll(); }) : paintAll());
   requestAnimationFrame(function () { requestAnimationFrame(function () { stage.classList.add('ready'); }); });
 
   window.GH_DEBUG = { state: state, move: move, open: openFocused, diag: toggleDiag };

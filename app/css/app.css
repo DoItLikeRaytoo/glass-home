@@ -20,9 +20,9 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 .ready .ic .on-layer { transition: opacity 360ms ease; }
 .ready .lens { transition: transform 460ms cubic-bezier(.3,1.25,.45,1); }
 .lens, .ic { will-change: transform; }
-.idle { display: none !important; }
-.warm { will-change: opacity, transform; }
-.blurword { position: absolute; }
+.glowc, .wordc { will-change: opacity, transform; }
+.big-icon .big-img { display: none !important; }
+.big-icon.has-img .big-img.cur { display: block !important; }
 
 /* Hintergrund */
 .words { left: 0; top: 30px; width: 1920px; height: 560px; }
