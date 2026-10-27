@@ -1,0 +1,127 @@
+/* Glass Home – Darstellung (1920×1080, Maße 1:1 aus der Designvorschau "Startseite") */
+
+@font-face { font-family: 'GH Inter'; src: url('../fonts/Inter-ExtraLight.woff') format('woff'); font-weight: 200; }
+@font-face { font-family: 'GH Inter'; src: url('../fonts/Inter-Regular.woff') format('woff'); font-weight: 400; }
+@font-face { font-family: 'GH Inter'; src: url('../fonts/Inter-Medium.woff') format('woff'); font-weight: 500; }
+@font-face { font-family: 'GH Inter'; src: url('../fonts/Inter-SemiBold.woff') format('woff'); font-weight: 600; }
+@font-face { font-family: 'GH Inter'; src: url('../fonts/Inter-Black.woff') format('woff'); font-weight: 900; }
+
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; color: #f5f6f8; -webkit-font-smoothing: antialiased; cursor: none; }
+
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; transform-origin: 0 0; }
+.abs { position: absolute; }
+.fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+
+/* Übergänge erst nach dem ersten Bild aktivieren (sonst spielt alles beim Start einmal ab) */
+.ready .fade { transition: opacity 900ms cubic-bezier(.4,0,.2,1), transform 1100ms cubic-bezier(.2,.8,.2,1); }
+/* Nur transform und opacity werden animiert – das übernimmt die Grafikeinheit ohne Neuzeichnen. */
+.ready .ic { transition: transform 360ms cubic-bezier(.2,.9,.25,1.06), opacity 360ms ease; }
+.ready .ic .on-layer { transition: opacity 360ms ease; }
+.ready .lens { transition: transform 460ms cubic-bezier(.3,1.25,.45,1); }
+.fade, .lens, .ic { will-change: opacity, transform; }
+
+/* Hintergrund */
+.words { left: 0; top: 30px; width: 1920px; height: 560px; }
+.word { position: absolute; left: 50%; top: 50%; white-space: nowrap; font-weight: 900; letter-spacing: -0.06em; line-height: 1;
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.horizon { left: 0; right: 0; top: 720px; height: 2px; }
+
+/* Uhr */
+.clock { left: 112px; top: 50px; display: flex; align-items: baseline; gap: 28px; }
+.clock .time { font-size: 62px; font-weight: 200; letter-spacing: -0.035em; line-height: 1; color: rgba(255,255,255,0.94); font-variant-numeric: tabular-nums; }
+.clock .date { font-size: 14px; font-weight: 500; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.42); }
+
+/* Glaskarte */
+.card { left: 270px; top: 350px; width: 1380px; height: 430px; border-radius: 64px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.55), 0 6px 14px rgba(0,0,0,0.35), 0 34px 70px rgba(0,0,0,0.45), 0 100px 170px rgba(0,0,0,0.5); }
+.card-clip { overflow: hidden; border-radius: 64px; }
+/* Unscharfe Ansicht des Hintergrunds hinter dem Glas: nur Kartenfläche + 60 px Rand, nicht der ganze Bildschirm */
+.view { left: -60px; top: -60px; width: 1500px; height: 550px; overflow: hidden; }
+.view-inner { left: -210px; top: -290px; width: 1920px; height: 1080px; }
+/* Unschärfe pro Element statt auf dem ganzen Container: so bleibt jede Ebene ein fertig gezeichnetes Bild,
+   und beim App-Wechsel werden nur Deckkraft und Position verändert (kein Neuzeichnen pro Frame). */
+.view-frost { background: #000; }
+.view-frost .word, .view-frost .horizon { -webkit-filter: blur(15px) saturate(1.12); filter: blur(15px) saturate(1.12); }
+.view-frost .glow { -webkit-filter: saturate(1.12); filter: saturate(1.12); }
+.view-rim .word, .view-rim .horizon { -webkit-filter: blur(20px) brightness(1.7) saturate(1.2); filter: blur(20px) brightness(1.7) saturate(1.2); }
+.rim-mask { opacity: 0.5;
+  -webkit-mask-image: linear-gradient(180deg, #000 0px, rgba(0,0,0,0.4) 24px, rgba(0,0,0,0) 70px, rgba(0,0,0,0) calc(100% - 44px), rgba(0,0,0,0.45) 100%);
+  mask-image: linear-gradient(180deg, #000 0px, rgba(0,0,0,0.4) 24px, rgba(0,0,0,0) 70px, rgba(0,0,0,0) calc(100% - 44px), rgba(0,0,0,0.45) 100%); }
+.glass-tint { background: rgba(9,10,14,0.34); }
+.veil1 { background: radial-gradient(120% 140% at 50% 50%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.045) 55%, rgba(255,255,255,0.10) 100%); }
+.veil2 { background: linear-gradient(160deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.02) 38%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.03) 100%); }
+.shimmer { left: 36%; top: -10%; width: 30%; height: 120%; transform: skewX(-20deg); background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.035) 50%, rgba(255,255,255,0) 100%); }
+.sheen { left: -12%; top: -40%; width: 70%; height: 100%; border-radius: 50%; background: radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 100%); }
+.specular { left: 7%; width: 36%; top: 0; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 35%, rgba(255,255,255,0.5) 75%, rgba(255,255,255,0) 100%); }
+.glint-tl { left: 0; top: 0; width: 240px; height: 160px; border-top-left-radius: 64px; border-top: 1.5px solid rgba(255,255,255,0.8); border-left: 1.5px solid rgba(255,255,255,0.5); box-sizing: border-box;
+  -webkit-mask-image: radial-gradient(130% 130% at 0% 0%, #000 22%, rgba(0,0,0,0) 60%); mask-image: radial-gradient(130% 130% at 0% 0%, #000 22%, rgba(0,0,0,0) 60%); }
+.bevel { border-radius: 64px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1.5px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(255,255,255,0.28), inset 0 30px 34px -28px rgba(255,255,255,0.32), inset 0 -24px 32px -26px rgba(255,255,255,0.18), inset 26px 0 30px -26px rgba(255,255,255,0.12), inset -26px 0 30px -26px rgba(255,255,255,0.12), inset 0 0 26px rgba(255,255,255,0.06); }
+.rim { border-radius: 64px; padding: 1.5px; box-sizing: border-box; background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.35) 12%, rgba(255,255,255,0.12) 34%, rgba(255,255,255,0.10) 62%, rgba(255,255,255,0.42) 88%, rgba(255,255,255,0.7) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.glint-br { right: 0; bottom: 0; width: 300px; height: 180px; border-bottom-right-radius: 64px; border-bottom: 2px solid rgba(255,255,255,0.55); border-right: 2px solid rgba(255,255,255,0.35); box-sizing: border-box; filter: blur(0.6px);
+  -webkit-mask-image: radial-gradient(130% 130% at 100% 100%, #000 20%, rgba(0,0,0,0) 60%); mask-image: radial-gradient(130% 130% at 100% 100%, #000 20%, rgba(0,0,0,0) 60%); }
+
+.content { padding: 0 76px 0 80px; box-sizing: border-box; display: flex; align-items: center; gap: 60px; }
+.content.swap { animation: swapIn 320ms cubic-bezier(.2,.8,.2,1); }
+@keyframes swapIn { from { opacity: 0.25; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.big-icon { position: relative; flex: 0 0 196px; width: 196px; height: 196px; border-radius: 54px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.big-icon .hl { border-radius: 54px; background: radial-gradient(75% 45% at 36% 14%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 100%); }
+.big-icon .bev { border-radius: 54px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -2px 0 rgba(255,255,255,0.25), inset 0 -30px 50px rgba(0,0,0,0.2); }
+.has-img .hl { opacity: 0.35; }
+.app-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.has-img .app-img { display: block; }
+/* Echtes Logo geladen: Ersatzsymbol ausblenden (!important, weil .ic .glyph und Inline-Stile sonst gewinnen) */
+.has-img .glyph { display: none !important; }
+.texts { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.kind { font-size: 15px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; }
+.name { font-size: 92px; font-weight: 600; letter-spacing: -0.045em; line-height: 0.95; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: 27px; font-weight: 400; line-height: 1.4; color: rgba(255,255,255,0.66); }
+.open-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 22px; padding: 26px 34px 26px 44px; border-radius: 32px; background: rgba(255,255,255,0.96); color: #000;
+  box-shadow: inset 0 1px 0 #fff, 0 16px 34px rgba(0,0,0,0.35); transition: transform 140ms ease, opacity 300ms ease; }
+.open-btn .lbl { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+.open-btn .ok { font-size: 14px; font-weight: 700; letter-spacing: 0.1em; padding: 7px 10px; border-radius: 9px; background: rgba(0,0,0,0.07); color: rgba(0,0,0,0.5); }
+.open-btn.pressed { transform: scale(0.95); }
+.open-btn.missing { opacity: 0.45; }
+
+/* Dock */
+.dock { left: 118px; top: 882px; width: 1684px; height: 136px; }
+.lens { left: 0; top: -30px; width: 180px; height: 180px; border-radius: 50px; }
+.lens span { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 50px; }
+.lens .l1 { background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.14) 100%); }
+.lens .l2 { background: radial-gradient(70% 40% at 34% 10%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 100%); }
+.lens .l3 { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1.5px 0 rgba(255,255,255,0.85), inset 0 -1px 0 rgba(255,255,255,0.35), inset 0 20px 22px -18px rgba(255,255,255,0.35), inset 0 -16px 22px -18px rgba(255,255,255,0.22), inset 18px 0 20px -18px rgba(255,255,255,0.14), inset -18px 0 20px -18px rgba(255,255,255,0.14); }
+.lens .l4 { padding: 1.5px; box-sizing: border-box; background: linear-gradient(150deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.3) 18%, rgba(255,255,255,0.08) 48%, rgba(255,255,255,0.45) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.floor-light { left: 0; top: 144px; width: 180px; height: 60px; border-radius: 50%; }
+.ic { position: absolute; top: 0; width: 136px; height: 136px; border-radius: 36px; display: flex; align-items: center; justify-content: center; z-index: 2; overflow: hidden; }
+.ic .on-layer { border-radius: 36px; opacity: 0; }
+.ic.on .on-layer { opacity: 1; }
+.ic .hl { border-radius: 36px; background: radial-gradient(75% 45% at 36% 12%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%); }
+.ic .bev { border-radius: 36px; box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.16), inset 0 -18px 30px rgba(0,0,0,0.16); }
+.ic .glyph { position: relative; display: flex; }
+.ic.missing { opacity: 0.38; }
+.ic.missing.on { opacity: 0.7; }
+.glyph svg { display: block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.35)); }
+
+/* Hinweise */
+.toast { left: 50%; top: 806px; transform: translateX(-50%) translateY(10px); padding: 14px 26px; border-radius: 22px; background: rgba(20,22,28,0.82);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 10px 30px rgba(0,0,0,0.5); font-size: 22px; font-weight: 500; color: #fff; white-space: nowrap; opacity: 0;
+  transition: opacity 260ms ease, transform 260ms ease; z-index: 20; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Diagnose (blaue Taste) */
+.diag { right: 40px; top: 40px; width: 900px; height: 1000px; border-radius: 28px; background: rgba(10,11,15,0.97); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), 0 30px 80px rgba(0,0,0,0.6);
+  z-index: 30; display: none; overflow: hidden; }
+.diag.show { display: block; }
+.diag-body { position: absolute; left: 0; top: 0; right: 0; padding: 34px 40px; font-size: 19px; line-height: 1.45; color: rgba(255,255,255,0.86); }
+.diag h2 { margin: 0 0 14px; font-size: 28px; font-weight: 600; color: #fff; }
+.diag h3 { margin: 22px 0 8px; font-size: 18px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+.diag table { border-collapse: collapse; width: 100%; }
+.diag td { padding: 3px 10px 3px 0; vertical-align: top; }
+.diag .mono { font-family: Menlo, 'DejaVu Sans Mono', monospace; font-size: 16px; word-break: break-all; }
+.diag .ok { color: #4ade80; } .diag .bad { color: #f87171; } .diag .dim { color: rgba(255,255,255,0.45); }
+
+/* Leichter Modus (gelbe Taste): ohne Unschärfe-Ebenen, falls der Fernseher ruckelt */
+.lite .view, .lite .rim-mask { display: none; }
+.lite .glass-tint { background: rgba(26,28,36,0.78); }

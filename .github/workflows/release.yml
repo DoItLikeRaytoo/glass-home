@@ -1,0 +1,19 @@
+# Baut bei jedem neuen Versions-Tag (z. B. v0.1.3) automatisch GlassHome.wgt
+# und legt ein GitHub-Release an. Der TizenBrew Installer holt sich davon die neueste Version.
+name: Release WGT
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: WGT-Paket bauen
+        run: cd app && zip -qr -X ../GlassHome.wgt config.xml index.html icon.png css js fonts icons
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" GlassHome.wgt --title "Glass Home ${GITHUB_REF_NAME#v}" --notes "Automatisch gebaut aus $GITHUB_SHA"
