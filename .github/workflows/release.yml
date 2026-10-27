@@ -1,9 +1,12 @@
-# Baut bei jedem neuen Versions-Tag (z. B. v0.1.3) automatisch GlassHome.wgt
-# und legt ein GitHub-Release an. Der TizenBrew Installer holt sich davon die neueste Version.
+# Baut bei jeder Änderung an app/ automatisch GlassHome.wgt und legt ein GitHub-Release an.
+# Die Versionsnummer kommt aus app/config.xml (version="X.Y.Z") -> Release-Tag vX.Y.Z.
+# Gibt es das Release schon, passiert nichts. Der TizenBrew Installer holt sich immer das neueste Release.
 name: Release WGT
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['app/**', '.github/workflows/release.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -11,9 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Version lesen
+        id: v
+        run: |
+          VER=$(grep -o 'version="[0-9][0-9.]*"' app/config.xml | head -1 | cut -d'"' -f2)
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "Version: $VER"
       - name: WGT-Paket bauen
         run: cd app && zip -qr -X ../GlassHome.wgt config.xml index.html icon.png css js fonts icons
-      - name: Release anlegen
+      - name: Release anlegen (falls neu)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" GlassHome.wgt --title "Glass Home ${GITHUB_REF_NAME#v}" --notes "Automatisch gebaut aus $GITHUB_SHA"
+          VER: ${{ steps.v.outputs.ver }}
+        run: |
+          if gh release view "v$VER" >/dev/null 2>&1; then
+            echo "Release v$VER gibt es schon – nichts zu tun. (Für ein Update Versionsnummer in app/config.xml erhöhen.)"
+          else
+            gh release create "v$VER" GlassHome.wgt --target "$GITHUB_SHA" --title "Glass Home $VER" --notes "Automatisch gebaut aus $GITHUB_SHA" --latest
+          fi
