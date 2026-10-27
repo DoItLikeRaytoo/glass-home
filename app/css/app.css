@@ -137,4 +137,5 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 .ic.shaped.has-img .on-layer, .ic.shaped.has-img .hl, .ic.shaped.has-img .bev,
 .big-icon.shaped.has-img .hl, .big-icon.shaped.has-img .bev { display: none; }
 .shaped.has-img .app-img { object-fit: contain; }
-.ic.shaped.has-img .app-img { left: 6px; top: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
+/* freie Logos dürfen etwas breiter als die Kachel sein (breite Schriftzüge wie Disney+ oder Netflix) */
+.ic.shaped.has-img .app-img { left: -14px; top: 6px; width: 164px; height: calc(100% - 12px); }

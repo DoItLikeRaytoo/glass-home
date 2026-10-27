@@ -14,7 +14,7 @@
 
   var P = GH_PLATFORM, APPS = GH_APPS, K = P.KEYS;
   var stage = document.getElementById('stage');
-  var state = { focus: 0, resolved: [], installed: [], listError: null, keys: [], fps: null, longest: null, lastLaunch: '—', lite: false, diag: false, iconStatus: {} };
+  var state = { cutUrl: {}, cutTried: {}, cutStatus: {}, focus: 0, resolved: [], installed: [], listError: null, keys: [], fps: null, longest: null, lastLaunch: '—', lite: false, diag: false, iconStatus: {} };
 
   // ---------- Hilfsfunktionen ----------
   function el(tag, cls, parent, style) {
@@ -58,6 +58,7 @@
   }
 
   // Frei geformte Logos: Schatten nach unten + leichtes Leuchten in der App-Farbe
+  function isShaped(j) { return !!(APPS[j].shape || (state.cutUrl && state.cutUrl[j])); }
   function shapeGlow(a) { return 'drop-shadow(0 8px 14px rgba(0,0,0,0.5)) drop-shadow(0 0 18px rgba(' + a.tint + ',0.45))'; }
 
   // ---------- Szene aufbauen ----------
@@ -235,7 +236,7 @@
     bigGlyph.innerHTML = glyphSvg(a.glyph, 108, 1.3);
     bigImgs.forEach(function (im, j) { im.classList.toggle('cur', j === i); });
     bigIcon.classList.toggle('has-img', !!bigOk[i]);
-    bigIcon.classList.toggle('shaped', !!a.shape);
+    bigIcon.classList.toggle('shaped', isShaped(i));
     kindEl.style.color = 'rgb(' + a.tint + ')';
     kindEl.textContent = a.kind;
     nameEl.textContent = a.name;
@@ -251,7 +252,7 @@
 
     tiles.forEach(function (t, j) {
       var on = j === i;
-      t.el.className = 'ic' + (APPS[j].shape ? ' shaped' : '') + (on ? ' on' : '') + (state.resolved.length && !state.resolved[j] ? ' missing' : '') + (t.el.classList.contains('has-img') ? ' has-img' : '');
+      t.el.className = 'ic' + (isShaped(j) ? ' shaped' : '') + (on ? ' on' : '') + (state.resolved.length && !state.resolved[j] ? ' missing' : '') + (t.el.classList.contains('has-img') ? ' has-img' : '');
       t.el.style.transform = on ? 'translateY(-8px) scale(1.16)' : 'scale(1)';
       t.el.style.boxShadow = on ? '0 10px 24px rgba(0,0,0,0.45)' : '0 6px 14px rgba(0,0,0,0.3)';
       t.glyph.style.opacity = on ? '1' : '0.72';
@@ -319,6 +320,21 @@
     img.src = list[0];
   }
 
+  // Symbol des Fernsehers am TV freistellen (nur bei Apps mit "cut"-Rezept und ohne eigenes Logo)
+  function tryCut(i) {
+    var a = APPS[i], t = tiles[i];
+    if (!a.cut || a.icon || state.cutUrl[i] || state.cutTried[i]) return;
+    if (!t.img.src || t.img.src.indexOf('data:') === 0) return;
+    state.cutTried[i] = true;
+    var url = null;
+    try { url = GH_CUT.cut(t.img, a.cut); }
+    catch (e) { state.cutStatus[a.key] = 'gesperrt (' + (e && e.name || 'Fehler') + ')'; return; }
+    if (!url) { state.cutStatus[a.key] = 'kein klares Logo gefunden'; return; }
+    state.cutUrl[i] = url; state.cutStatus[a.key] = 'freigestellt';
+    [t.img, bigImgs[i]].forEach(function (im) { im.style.filter = shapeGlow(a); im.src = url; });
+    render(state.focus, false);
+  }
+
   // ---------- Installierte Apps zuordnen ----------
   function resolve(installed) {
     var byId = {}, used = {};
@@ -344,7 +360,7 @@
       state.installed = list || [];
       state.resolved = resolve(state.installed);
       tiles.forEach(function (t, i) {
-        setIcon(t.img, i, function (ok) { t.el.classList.toggle('has-img', ok); });
+        setIcon(t.img, i, function (ok) { t.el.classList.toggle('has-img', ok); if (ok) tryCut(i); });
         setIcon(bigImgs[i], i, function (ok) { bigOk[i] = ok; if (i === state.focus) bigIcon.classList.toggle('has-img', ok); });
       });
       render(state.focus, false);
@@ -416,7 +432,7 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.7 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.8 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')
@@ -431,7 +447,7 @@
       + '</table><h3>Zuordnung Dock</h3><table>';
     APPS.forEach(function (a, i) {
       var r = state.resolved[i];
-      h += '<tr><td>' + esc(a.name) + '</td><td>' + (r ? '<span class="ok">✓</span> <span class="mono">' + esc(r.app.id) + '</span> <span class="dim">(' + esc(r.how) + ', Symbol: ' + esc(state.iconStatus[a.key] || (r.app.iconPath ? 'lädt' : 'keins')) + ')</span><br><span class="mono dim">' + esc(r.app.iconPath || '– kein Symbolpfad –') + '</span>' : '<span class="bad">nicht gefunden</span>') + '</td></tr>';
+      h += '<tr><td>' + esc(a.name) + '</td><td>' + (r ? '<span class="ok">✓</span> <span class="mono">' + esc(r.app.id) + '</span> <span class="dim">(' + esc(r.how) + ', Symbol: ' + esc(state.iconStatus[a.key] || (r.app.iconPath ? 'lädt' : 'keins')) + (a.cut && !a.icon ? ', Form: ' + esc(state.cutStatus[a.key] || 'ausstehend') : '') + ')</span><br><span class="mono dim">' + esc(r.app.iconPath || '– kein Symbolpfad –') + '</span>' : '<span class="bad">nicht gefunden</span>') + '</td></tr>';
     });
     h += '</table><h3>Installierte Apps (sichtbare zuerst)</h3><table>';
     state.installed.slice().sort(function (x, y) { return (y.show ? 1 : 0) - (x.show ? 1 : 0) || String(x.name).localeCompare(String(y.name)); })
