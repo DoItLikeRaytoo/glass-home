@@ -61,23 +61,74 @@
   // Dieselbe Hintergrund-Szene wird dreimal verwendet: sichtbar, unscharf hinter dem Glas, als Lichtkante.
   // Alle drei bekommen exakt dieselben Positionen und Übergänge, damit nichts versetzt oder doppelt wirkt.
   var layers = [];
-  function buildScene(parent, withGlow) {
-    var L = { glows: [], words: [], horizons: [] };
-    APPS.forEach(function (a) {
-      if (withGlow) L.glows.push(el('div', 'fill glow fade', parent, 'background:' + glowOf(a) + '; opacity:0'));
-    });
+  // Leistung: Jede App hat pro Szene eigene Ebenen. Nur die gerade aktive und die gerade ausblendende
+  // App sind sichtbar (display), alle anderen ruhen komplett (kein Speicher, keine Rechenzeit).
+  // In der Glas-Ansicht ist das Wort ein EINMAL vorberechnetes, unscharfes Bild (Canvas) – der Fernseher
+  // muss die Unschärfe also nicht bei jedem Bild der Animation neu berechnen.
+  var layers = [];
+  function buildScene(parent, mode) {
+    var L = { glows: [], words: [], horizons: [], mode: mode };
+    if (mode !== 'rim') APPS.forEach(function (a) { L.glows.push(el('div', 'fill glow fade idle', parent, 'background:' + glowOf(a) + '; opacity:0')); });
     var w = el('div', 'abs words', parent);
     APPS.forEach(function (a) {
-      var d = el('div', 'word fade', w, 'font-size:' + fsOf(a) + 'px; background-image:' + wordGrad(a) + '; opacity:0; transform: translate(-50%,-50%) translateX(40px)');
-      d.textContent = a.word;
+      var d;
+      if (mode === 'main') {
+        d = el('div', 'word fade idle', w, 'font-size:' + fsOf(a) + 'px; background-image:' + wordGrad(a) + '; opacity:0; transform: translate(-50%,-50%) translateX(40px)');
+        d.textContent = a.word;
+      } else {
+        d = el('canvas', 'blurword fade idle', parent, 'opacity:0; transform: translateX(40px)');
+      }
       L.words.push(d);
     });
-    APPS.forEach(function (a) { L.horizons.push(el('div', 'abs horizon fade', parent, horizonCss(a) + ' opacity:0')); });
+    if (mode === 'main') APPS.forEach(function (a) { L.horizons.push(el('div', 'abs horizon fade idle', parent, horizonCss(a) + ' opacity:0')); });
     layers.push(L);
     return L;
   }
 
-  buildScene(stage, true);
+  // Unscharfes Wort vorberechnen (halbe Auflösung reicht, weil es ohnehin unscharf ist)
+  var WORD_CY = 310; // Mitte des Schriftzugs auf dem Bildschirm (30 px + 560/2)
+  function paintBlurWord(cv, a, mode) {
+    var fs = fsOf(a), pad = 90, top = WORD_CY - fs / 2 - pad, h = 800 - top, k = 0.5; // bis unter den Horizont (y 720)
+    cv.width = 1920 * k; cv.height = Math.ceil(h * k);
+    cv.style.left = '0px'; cv.style.top = top + 'px'; cv.style.width = '1920px'; cv.style.height = h + 'px';
+    var tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height;
+    var t = tmp.getContext('2d');
+    t.scale(k, k);
+    t.font = '900 ' + fs + 'px "GH Inter"';
+    try { t.letterSpacing = (-0.06 * fs) + 'px'; } catch (e) {}
+    var m = t.measureText(a.word);
+    var asc = m.fontBoundingBoxAscent || fs * 0.97, desc = m.fontBoundingBoxDescent || fs * 0.24;
+    var boxTop = pad, base = boxTop + (fs - (asc + desc)) / 2 + asc;
+    var g = t.createLinearGradient(0, boxTop, 0, boxTop + fs);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(' + a.tint + ',1)'); g.addColorStop(1, 'rgba(' + a.tint2 + ',0.65)');
+    t.fillStyle = g; t.textBaseline = 'alphabetic';
+    t.fillText(a.word, 960 - m.width / 2, base);
+    // Horizontlinie (wie .horizon: 2 px, Farbverlauf, Leuchten) – wird mit unscharf gerechnet
+    var hy = 720 - top, hg = t.createLinearGradient(0, 0, 1920, 0);
+    hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(0.18, 'rgba(' + a.tint + ',0.5)'); hg.addColorStop(0.5, 'rgba(255,255,255,0.8)');
+    hg.addColorStop(0.82, 'rgba(' + a.tint + ',0.5)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
+    t.letterSpacing = '0px';
+    t.shadowColor = 'rgba(' + a.tint + ',0.35)'; t.shadowBlur = 12; t.fillStyle = hg; t.fillRect(0, hy, 1920, 2);
+    t.shadowColor = 'rgba(' + a.tint + ',0.15)'; t.shadowBlur = 40; t.fillRect(0, hy, 1920, 2);
+    t.shadowBlur = 0;
+    var c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.filter = mode === 'rim' ? 'blur(10px) brightness(1.7) saturate(1.2)' : 'blur(7.5px) saturate(1.12)';
+    c.drawImage(tmp, 0, 0);
+    cv.setAttribute('data-ready', '1');
+  }
+  function paintAllBlurWords() {
+    var order = [state.focus].concat(APPS.map(function (_, i) { return i; }).filter(function (i) { return i !== state.focus; }));
+    var n = 0;
+    (function next() {
+      if (n >= order.length) return;
+      var i = order[n++];
+      layers.forEach(function (L) { if (L.mode !== 'main') paintBlurWord(L.words[i], APPS[i], L.mode); });
+      setTimeout(next, 30); // in kleinen Häppchen, damit die Bedienung nicht blockiert
+    })();
+  }
+
+  buildScene(stage, 'main');
 
   var clock = el('div', 'abs clock', stage);
   var timeEl = el('div', 'time', clock), dateEl = el('div', 'date', clock);
@@ -85,11 +136,11 @@
   var card = el('div', 'abs card', stage);
   var clip = el('div', 'fill card-clip', card);
   var frost = el('div', 'abs view view-frost', clip);
-  buildScene(el('div', 'abs view-inner', frost), true);
+  buildScene(el('div', 'abs view-inner', frost), 'frost');
   el('div', 'fill glass-tint', clip);
   var rimMask = el('div', 'fill rim-mask', clip);
   var rimView = el('div', 'abs view view-rim', rimMask);
-  buildScene(el('div', 'abs view-inner', rimView), false);
+  buildScene(el('div', 'abs view-inner', rimView), 'rim');
   ['veil1', 'veil2'].forEach(function (c) { el('div', 'fill ' + c, clip); });
   ['shimmer', 'sheen', 'specular', 'glint-tl'].forEach(function (c) { el('div', 'abs ' + c, clip); });
   el('div', 'fill bevel', card);
@@ -128,19 +179,51 @@
   var diagBody = el('div', 'diag-body', diag);
   var diagScroll = 0;
 
+  // Szene umschalten: neue App einblenden, alte ausblenden, danach alte ruhen lassen
+  var sceneCurrent = -1, hideTimers = {};
+  function sceneEls(j) {
+    var out = [];
+    layers.forEach(function (L) { if (L.glows[j]) out.push(L.glows[j]); out.push(L.words[j]); if (L.horizons[j]) out.push(L.horizons[j]); });
+    return out;
+  }
+  function setOn(j, on) {
+    layers.forEach(function (L) {
+      if (L.glows[j]) L.glows[j].style.opacity = on ? '1' : '0';
+      L.words[j].style.opacity = on ? '1' : '0';
+      L.words[j].style.transform = (L.mode === 'main' ? 'translate(-50%,-50%) ' : '') + 'translateX(' + (on ? 0 : 40) + 'px)';
+      if (L.horizons[j]) L.horizons[j].style.opacity = on ? '1' : '0';
+    });
+  }
+  // Vorwärmen: die Nachbar-Apps links/rechts sind schon fertig gezeichnet (unsichtbar),
+  // damit der nächste Wechsel sofort startet statt erst zeichnen zu müssen.
+  function warmSet(i) {
+    var w = {}; w[i] = 1; if (i > 0) w[i - 1] = 1; if (i < APPS.length - 1) w[i + 1] = 1; return w;
+  }
+  function applyWarm(i, keep) {
+    var w = warmSet(i);
+    if (keep >= 0) w[keep] = 1;
+    APPS.forEach(function (_, j) {
+      var on = !!w[j];
+      sceneEls(j).forEach(function (e) { e.classList.toggle('idle', !on); e.classList.toggle('warm', on); });
+    });
+  }
+  function setScene(i) {
+    if (i === sceneCurrent) return;
+    var prev = sceneCurrent;
+    clearTimeout(hideTimers.t);
+    applyWarm(i, prev);
+    void stage.offsetWidth;            // Startzustand übernehmen, damit die Überblendung sicher läuft
+    setOn(i, true);
+    if (prev >= 0) setOn(prev, false);
+    sceneCurrent = i;
+    hideTimers.t = setTimeout(function () { applyWarm(sceneCurrent, -1); }, 1200);
+  }
+
   // ---------- Fokus ----------
   var measuring = null;
   function render(i, animateContent) {
     var a = APPS[i];
-    layers.forEach(function (L) {
-      APPS.forEach(function (_, j) {
-        var on = j === i;
-        if (L.glows[j]) L.glows[j].style.opacity = on ? '1' : '0';
-        L.words[j].style.opacity = on ? '1' : '0';
-        L.words[j].style.transform = 'translate(-50%,-50%) translateX(' + (on ? 0 : 40) + 'px)';
-        L.horizons[j].style.opacity = on ? '1' : '0';
-      });
-    });
+    setScene(i);
 
     bigIcon.style.background = 'linear-gradient(150deg, rgba(' + a.tint + ',0.85) 0%, rgba(' + a.tint2 + ',0.45) 100%)';
     bigIcon.style.boxShadow = '0 2px 4px rgba(0,0,0,0.25), 0 26px 50px rgba(0,0,0,0.4), 0 0 50px rgba(' + a.tint + ',0.22)';
@@ -281,7 +364,7 @@
   }
 
   // ---------- Rückkehr nach Glass Home ----------
-  // Glass Home läuft im Hintergrund weiter (background-support) und prüft alle 1,5 s, ob die gestartete
+  // Glass Home läuft im Hintergrund weiter (background-support) und prüft alle 0,3 s, ob die gestartete
   // App noch läuft. Wird sie beendet (z. B. "Beenden? Ja"), holt sich Glass Home wieder nach vorne.
   // Drückst du in der App Home, läuft sie weiter -> dann passiert nichts.
   var watchTimer = null;
@@ -303,7 +386,7 @@
           P.bringSelfToFront();
         }
       });
-    }, 1500);
+    }, 300);
   }
 
   // ---------- Uhr ----------
@@ -322,7 +405,7 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.3 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.4 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')
@@ -429,6 +512,7 @@
   tickClock();
   render(state.focus, false);
   scanApps();
+  (document.fonts && document.fonts.load ? document.fonts.load('900 300px "GH Inter"').then(paintAllBlurWords, paintAllBlurWords) : paintAllBlurWords());
   requestAnimationFrame(function () { requestAnimationFrame(function () { stage.classList.add('ready'); }); });
 
   window.GH_DEBUG = { state: state, move: move, open: openFocused, diag: toggleDiag };

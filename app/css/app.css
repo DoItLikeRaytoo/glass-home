@@ -19,7 +19,10 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 .ready .ic { transition: transform 360ms cubic-bezier(.2,.9,.25,1.06), opacity 360ms ease; }
 .ready .ic .on-layer { transition: opacity 360ms ease; }
 .ready .lens { transition: transform 460ms cubic-bezier(.3,1.25,.45,1); }
-.fade, .lens, .ic { will-change: opacity, transform; }
+.lens, .ic { will-change: transform; }
+.idle { display: none !important; }
+.warm { will-change: opacity, transform; }
+.blurword { position: absolute; }
 
 /* Hintergrund */
 .words { left: 0; top: 30px; width: 1920px; height: 560px; }
@@ -42,9 +45,8 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 /* Unschärfe pro Element statt auf dem ganzen Container: so bleibt jede Ebene ein fertig gezeichnetes Bild,
    und beim App-Wechsel werden nur Deckkraft und Position verändert (kein Neuzeichnen pro Frame). */
 .view-frost { background: #000; }
-.view-frost .word, .view-frost .horizon { -webkit-filter: blur(15px) saturate(1.12); filter: blur(15px) saturate(1.12); }
-.view-frost .glow { -webkit-filter: saturate(1.12); filter: saturate(1.12); }
-.view-rim .word, .view-rim .horizon { -webkit-filter: blur(20px) brightness(1.7) saturate(1.2); filter: blur(20px) brightness(1.7) saturate(1.2); }
+.view-frost .horizon { -webkit-filter: blur(15px) saturate(1.12); filter: blur(15px) saturate(1.12); }
+.view-rim .horizon { -webkit-filter: blur(20px) brightness(1.7) saturate(1.2); filter: blur(20px) brightness(1.7) saturate(1.2); }
 .rim-mask { opacity: 0.5;
   -webkit-mask-image: linear-gradient(180deg, #000 0px, rgba(0,0,0,0.4) 24px, rgba(0,0,0,0) 70px, rgba(0,0,0,0) calc(100% - 44px), rgba(0,0,0,0.45) 100%);
   mask-image: linear-gradient(180deg, #000 0px, rgba(0,0,0,0.4) 24px, rgba(0,0,0,0) 70px, rgba(0,0,0,0) calc(100% - 44px), rgba(0,0,0,0.45) 100%); }
