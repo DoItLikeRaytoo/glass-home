@@ -127,3 +127,10 @@ body { font-family: 'GH Inter', Inter, -apple-system, system-ui, sans-serif; col
 /* Leichter Modus (gelbe Taste): ohne Unschärfe-Ebenen, falls der Fernseher ruckelt */
 .lite .view, .lite .rim-mask { display: none; }
 .lite .glass-tint { background: rgba(26,28,36,0.78); }
+
+/* Logos mit eigener Form (z. B. YouTube-Button): keine quadratische Kachel, Logo frei mit Schatten */
+.ic.shaped.has-img, .big-icon.shaped.has-img { background: none !important; box-shadow: none !important; overflow: visible; }
+.ic.shaped.has-img .on-layer, .ic.shaped.has-img .hl, .ic.shaped.has-img .bev,
+.big-icon.shaped.has-img .hl, .big-icon.shaped.has-img .bev { display: none; }
+.shaped.has-img .app-img { object-fit: contain; filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45)); }
+.ic.shaped.has-img .app-img { left: 6px; top: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }

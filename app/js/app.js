@@ -187,7 +187,7 @@
   var lens = el('div', 'abs lens', dock);
   lens.innerHTML = '<span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span>';
   var tiles = APPS.map(function (a, i) {
-    var t = el('div', 'ic', dock, 'left:' + (i * 172) + 'px');
+    var t = el('div', 'ic' + (a.shape ? ' shaped' : ''), dock, 'left:' + (i * 172) + 'px');
     t.style.background = 'linear-gradient(150deg, rgba(' + a.tint + ',0.30) 0%, rgba(' + a.tint2 + ',0.10) 100%), rgba(255,255,255,0.05)';
     el('span', 'fill on-layer', t, 'background: linear-gradient(150deg, rgba(' + a.tint + ',0.92) 0%, rgba(' + a.tint2 + ',0.5) 100%), rgba(255,255,255,0.04)');
     var img = el('img', 'app-img', t);
@@ -231,6 +231,7 @@
     bigGlyph.innerHTML = glyphSvg(a.glyph, 108, 1.3);
     bigImgs.forEach(function (im, j) { im.classList.toggle('cur', j === i); });
     bigIcon.classList.toggle('has-img', !!bigOk[i]);
+    bigIcon.classList.toggle('shaped', !!a.shape);
     kindEl.style.color = 'rgb(' + a.tint + ')';
     kindEl.textContent = a.kind;
     nameEl.textContent = a.name;
@@ -246,7 +247,7 @@
 
     tiles.forEach(function (t, j) {
       var on = j === i;
-      t.el.className = 'ic' + (on ? ' on' : '') + (state.resolved.length && !state.resolved[j] ? ' missing' : '') + (t.el.classList.contains('has-img') ? ' has-img' : '');
+      t.el.className = 'ic' + (APPS[j].shape ? ' shaped' : '') + (on ? ' on' : '') + (state.resolved.length && !state.resolved[j] ? ' missing' : '') + (t.el.classList.contains('has-img') ? ' has-img' : '');
       t.el.style.transform = on ? 'translateY(-8px) scale(1.16)' : 'scale(1)';
       t.el.style.boxShadow = on ? '0 10px 24px rgba(0,0,0,0.45)' : '0 6px 14px rgba(0,0,0,0.3)';
       t.glyph.style.opacity = on ? '1' : '0.72';
@@ -411,7 +412,7 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.5 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.6 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')

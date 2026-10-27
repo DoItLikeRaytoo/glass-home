@@ -15,6 +15,7 @@
  *   match  Suchmuster für den App-Namen auf dem Fernseher (falls keine ID passt)
  *   avoid  Namen, die NICHT gemeint sind (z. B. "YouTube Kids")
  *   icon   optional: eigenes Logo im Ordner icons/ (hat Vorrang vor dem Symbol des Fernsehers)
+ *   shape  true = Logo hat eigene Form (transparentes PNG) und wird ohne quadratische Kachel gezeigt
  *
  * Wenn eine App auf deinem TV nicht gefunden wird: blaue Taste drücken
  * (Diagnose), dort steht die echte ID. Diese hier bei "ids" ganz vorne eintragen.
@@ -57,6 +58,6 @@ var GH_APPS = [
     ids: [], match: [/tv\s*plus/i], avoid: [] },
 
   { key: 'youtube', name: 'YouTube', word: 'YOUTUBE', kind: 'Original-App', sub: 'Mit Werbung',
-    tint: '255,0,0', tint2: '255,96,96', glyph: 'camera', icon: 'icons/youtube.png',
+    tint: '255,0,0', tint2: '255,96,96', glyph: 'camera', icon: 'icons/youtube.png', shape: true,
     ids: ['9Ur5IzDKqV.TizenYouTube'], match: [/^youtube$/i, /youtube/i], avoid: [/kids/i, /music/i, /\btv\b/i, /tizentube/i] }
 ];
