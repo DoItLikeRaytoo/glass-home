@@ -17,11 +17,16 @@ jobs:
       - name: Version lesen
         id: v
         run: |
-          VER=$(grep -o 'version="[0-9][0-9.]*"' app/config.xml | head -1 | cut -d'"' -f2)
+          # Version aus dem <widget>-Element (nicht aus der XML-Kopfzeile <?xml version="1.0"?>)
+          VER=$(tr '\n' ' ' < app/config.xml | grep -o '<widget[^>]*' | grep -o ' version="[^"]*"' | cut -d'"' -f2)
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
           echo "Version: $VER"
       - name: WGT-Paket bauen
         run: cd app && zip -qr -X ../GlassHome.wgt config.xml index.html icon.png css js fonts icons
+      - name: Aufräumen (versehentlich angelegtes Release v1.0 entfernen)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete v1.0 --cleanup-tag -y || true
       - name: Release anlegen (falls neu)
         env:
           GH_TOKEN: ${{ github.token }}
