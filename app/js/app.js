@@ -207,6 +207,19 @@
   var diag = el('div', 'abs diag', stage);
   var diagBody = el('div', 'diag-body', diag);
   var diagScroll = 0;
+  var hpanel = el('div', 'abs diag', stage), hbody = el('div', 'diag-body', hpanel), hScroll = 0, hOpen = false;
+  function drawHome() { hbody.innerHTML = GH_HOMETEST.html(esc); hbody.style.transform = 'translateY(' + (-hScroll) + 'px)'; }
+  function toggleHome(force) {
+    hOpen = force === undefined ? !hOpen : force;
+    if (hOpen && state.diag) toggleDiag(false);
+    hpanel.classList.toggle('show', hOpen);
+    if (hOpen) { hScroll = 0; drawHome(); }
+  }
+  function scrollHome(d) {
+    var max = Math.max(0, hbody.offsetHeight - 1000 + 40);
+    hScroll = Math.max(0, Math.min(max, hScroll + d * 240));
+    hbody.style.transform = 'translateY(' + (-hScroll) + 'px)';
+  }
 
   // Szene umschalten: neue App einblenden, alte ausblenden (nur Deckkraft/Position)
   var sceneCurrent = -1;
@@ -432,7 +445,7 @@
 
   // ---------- Diagnose ----------
   function drawDiag() {
-    var inf = P.info(), h = '<h2>Glass Home 0.1.8 – Diagnose</h2>';
+    var inf = P.info(), h = '<h2>Glass Home 0.1.9 – Diagnose</h2>';
     h += '<table>'
       + '<tr><td class="dim">Samsung-Plattform</td><td>' + (inf.tizen ? '<span class="ok">ja</span>' : '<span class="bad">nein (Browser-Vorschau)</span>') + '</td></tr>'
       + (inf.tizen ? '<tr><td class="dim">Tizen-Version</td><td>' + esc(inf.platform) + '</td></tr><tr><td class="dim">Eigene App-ID</td><td class="mono">' + esc(inf.self) + '</td></tr>' : '')
@@ -487,13 +500,17 @@
     if (isBack(e)) {
       e.preventDefault(); e.stopPropagation();
       if (state.diag) toggleDiag(false);
+      if (hOpen) toggleHome(false);
       return; // Launcher bleibt geöffnet
     }
     if (state.diag && (k === K.UP || k === K.DOWN)) { scrollDiag(k === K.UP ? -1 : 1); e.preventDefault(); return; }
+    if (hOpen && (k === K.UP || k === K.DOWN)) { scrollHome(k === K.UP ? -1 : 1); e.preventDefault(); return; }
     if (k === K.LEFT) move(-1);
     else if (k === K.RIGHT) move(1);
     else if (k === K.ENTER) { if (!e.repeat) openFocused(); }
-    else if (k === K.BLUE || k === 68) toggleDiag();
+    else if (k === K.BLUE || k === 68) { if (hOpen) toggleHome(false); toggleDiag(); }
+    else if (k === K.GREEN || k === 72) toggleHome();
+    else if (k === K.RED || k === 67) { GH_HOMETEST.clear(); if (hOpen) drawHome(); showToast('Home-Test: Aufzeichnung gelöscht', 1800); }
     else if (k === K.YELLOW || k === 81) { setLite(!state.lite); showToast('Glas-Qualität: ' + (state.lite ? 'leicht' : 'voll'), 1800); }
     else return;
     e.preventDefault();
@@ -543,5 +560,9 @@
   (document.fonts && document.fonts.load ? document.fonts.load('900 300px "GH Inter"').then(function () { paintAll(); }, function () { paintAll(); }) : paintAll());
   requestAnimationFrame(function () { requestAnimationFrame(function () { stage.classList.add('ready'); }); });
 
-  window.GH_DEBUG = { state: state, move: move, open: openFocused, diag: toggleDiag };
+  GH_HOMETEST.start(function (id) {
+    for (var i = 0; i < state.installed.length; i++) if (state.installed[i].id === id) return state.installed[i].name;
+    return id;
+  });
+  window.GH_DEBUG = { state: state, move: move, open: openFocused, diag: toggleDiag, home: toggleHome };
 })();
